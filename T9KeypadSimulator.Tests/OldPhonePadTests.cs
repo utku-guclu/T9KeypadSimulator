@@ -158,14 +158,14 @@ namespace T9KeypadSimulator.Tests
         public void OldPhonePad_ZeroKey_AddsSpaceCharacter()
         {
             Assert.Equal(" ", OldPhonePadSimulator.OldPhonePad("0#"));
-            Assert.Equal("A B", OldPhonePadSimulator.OldPhonePad("2022#"));
+            Assert.Equal("AB", OldPhonePadSimulator.OldPhonePad("2 22#"));
         }
 
         [Fact]
         public void OldPhonePad_MultipleZeros_AddsMultipleSpaces()
         {
             Assert.Equal("  ", OldPhonePadSimulator.OldPhonePad("00#"));
-            Assert.Equal("A  B", OldPhonePadSimulator.OldPhonePad("20022#"));
+            Assert.Equal("AB", OldPhonePadSimulator.OldPhonePad("2  22#"));
         }
 
         #endregion

@@ -5,146 +5,173 @@ using System.Text;
 namespace T9KeypadSimulator
 {
     /// <summary>
-    /// Simulates the old mobile phone keypad text input method.
-    /// Converts numeric keypress sequences into corresponding letters, supporting
-    /// multi-tap input, separators, backspace, and space characters.
+    /// Represents the T9 keypad layout and provides methods to convert key sequences to text.
     /// </summary>
-    public static class OldPhonePadSimulator
+    public class T9Keypad
     {
-        /// <summary>
-        /// Maps each numeric key to its corresponding letters following the standard
-        /// old mobile phone keypad layout.
-        /// </summary>
-        private static readonly IReadOnlyDictionary<char, string> KeypadLayout = 
-            new Dictionary<char, string>
-            {
-                { '2', "ABC" },
-                { '3', "DEF" },
-                { '4', "GHI" },
-                { '5', "JKL" },
-                { '6', "MNO" },
-                { '7', "PQRS" },
-                { '8', "TUV" },
-                { '9', "WXYZ" }
-            };
-
-        /// <summary>
-        /// Converts a sequence of old phone keypad input into the corresponding text.
-        /// </summary>
-        /// <param name="input">The keypad input sequence</param>
-        /// <returns>The converted text string</returns>
-        /// <exception cref="ArgumentException">Thrown when input contains invalid characters</exception>
-        public static string OldPhonePad(string input)
+        private static readonly IReadOnlyDictionary<char, string> KeyMappings = new Dictionary<char, string>
         {
-            if (string.IsNullOrEmpty(input))
-                return string.Empty;
-                
-            // Check if input ends with '#'
-            if (!input.EndsWith('#'))
-            {
-                throw new ArgumentException("Input must end with '#'");
-            }
+            { '1', "&'(" },
+            { '2', "ABC" },
+            { '3', "DEF" },
+            { '4', "GHI" },
+            { '5', "JKL" },
+            { '6', "MNO" },
+            { '7', "PQRS" },
+            { '8', "TUV" },
+            { '9', "WXYZ" },
+            { '0', " " }
+        };
 
-            var result = new StringBuilder();
-            char currentKey = '\0';
-            int pressCount = 0;
+        private readonly StringBuilder _result;
+        private char? _currentKey;
+        private int _keyPressCount;
 
-            foreach (char ch in input)
-            {
-                switch (ch)
-                {
-                    case '#':
-                        // End of input - process any pending sequence
-                        if (currentKey != '\0')
-                        {
-                            AppendLetter(result, currentKey, pressCount);
-                        }
-                        return result.ToString();
-
-                    case '*':
-                        // Process current sequence before handling backspace
-                        if (currentKey != '\0')
-                        {
-                            AppendLetter(result, currentKey, pressCount);
-                            currentKey = '\0';
-                            pressCount = 0;
-                        }
-                        // Then remove last character if there is one
-                        if (result.Length > 0)
-                        {
-                            result.Length--;
-                        }
-                        break;
-
-                    case ' ':
-                        // Separator - process current sequence
-                        if (currentKey != '\0')
-                        {
-                            AppendLetter(result, currentKey, pressCount);
-                            currentKey = '\0';
-                            pressCount = 0;
-                        }
-                        break;
-
-                    case '0':
-                        // Space character - process current sequence then add space
-                        if (currentKey != '\0')
-                        {
-                            AppendLetter(result, currentKey, pressCount);
-                            currentKey = '\0';
-                            pressCount = 0;
-                        }
-                        result.Append(" ");
-                        break;
-
-                    default:
-                        // Letter keys (2-9)
-                        if (ch < '2' || ch > '9')
-                        {
-                            throw new ArgumentException($"Invalid input character: '{ch}'. Valid characters are: 2-9 (letters), 0 (space), * (backspace), # (end), and space (separator).");
-                        }
-
-                        if (ch == currentKey)
-                        {
-                            // Same key pressed again
-                            pressCount++;
-                        }
-                        else
-                        {
-                            // Different key - process previous sequence
-                            if (currentKey != '\0')
-                            {
-                                AppendLetter(result, currentKey, pressCount);
-                            }
-                            currentKey = ch;
-                            pressCount = 1;
-                        }
-                        break;
-                }
-            }
-
-            // Process any remaining sequence if no # at end
-            if (currentKey != '\0')
-            {
-                AppendLetter(result, currentKey, pressCount);
-            }
-
-            return result.ToString();
+        /// <summary>
+        /// Initializes a new instance of the <see cref="T9Keypad"/> class.
+        /// </summary>
+        public T9Keypad()
+        {
+            _result = new StringBuilder();
         }
 
         /// <summary>
-        /// Appends the appropriate letter based on key and press count.
+        /// Converts a sequence of key presses to text using T9 keypad rules.
         /// </summary>
-        /// <param name="result">StringBuilder to append to</param>
-        /// <param name="key">The key that was pressed</param>
-        /// <param name="pressCount">Number of times the key was pressed</param>
-        private static void AppendLetter(StringBuilder result, char key, int pressCount)
+        /// <param name="input">The input string containing key presses</param>
+        /// <returns>The converted text</returns>
+        /// <exception cref="ArgumentException">Thrown when input is invalid or doesn't end with '#'</exception>
+        public string ConvertToText(string? input)
         {
-            if (KeypadLayout.TryGetValue(key, out string? letters))
+            if (string.IsNullOrEmpty(input))
             {
-                int index = (pressCount - 1) % letters.Length;
-                result.Append(letters[index]);
+                return string.Empty;
             }
+
+            if (!input.EndsWith('#'))
+            {
+                throw new ArgumentException("Input must end with '#'", nameof(input));
+            }
+
+            ResetState();
+
+            for (int i = 0; i < input.Length - 1; i++) // Skip the last '#'
+            {
+                char c = input[i];
+                
+                // Handle space as a separator between key presses
+                if (c == ' ')
+                {
+                    ProcessCurrentKey();
+                    continue;
+                }
+                
+                ProcessCharacter(c);
+            }
+
+            // Process any remaining key presses
+            ProcessCurrentKey();
+
+            return _result.ToString();
+        }
+
+        private void ProcessCharacter(char c)
+        {
+            switch (c)
+            {
+                case '*':
+                    ProcessBackspace();
+                    break;
+                case '0':
+                    ProcessCurrentKey();
+                    _result.Append(' ');
+                    break;
+                default:
+                    ProcessKeyPress(c);
+                    break;
+            }
+        }
+
+        private void ProcessKeyPress(char key)
+        {
+            if (!IsValidKey(key))
+            {
+                throw new ArgumentException($"Invalid key: {key}");
+            }
+
+            if (_currentKey == key)
+            {
+                _keyPressCount++;
+            }
+            else
+            {
+                ProcessCurrentKey();
+                _currentKey = key;
+                _keyPressCount = 1;
+            }
+        }
+
+        private void ProcessCurrentKey()
+        {
+            if (!_currentKey.HasValue) return;
+
+            if (KeyMappings.TryGetValue(_currentKey.Value, out var letters))
+            {
+                int index = (_keyPressCount - 1) % letters.Length;
+                _result.Append(letters[index]);
+            }
+
+            _currentKey = null;
+            _keyPressCount = 0;
+        }
+
+        private void ProcessBackspace()
+        {
+            if (_currentKey.HasValue)
+            {
+                _currentKey = null;
+                _keyPressCount = 0;
+            }
+            else if (_result.Length > 0)
+            {
+                _result.Length--;
+            }
+        }
+
+        private static bool IsValidKey(char key)
+        {
+            return key == '0' || (key >= '2' && key <= '9');
+        }
+
+        private void ResetState()
+        {
+            _result.Clear();
+            _currentKey = null;
+            _keyPressCount = 0;
+        }
+    }
+
+    /// <summary>
+    /// Provides a static interface to the T9 keypad functionality.
+    /// </summary>
+    public static class OldPhonePadSimulator
+    {
+        private static readonly T9Keypad _keypad = new T9Keypad();
+
+        /// <summary>
+        /// Converts a sequence of key presses to text using T9 keypad rules.
+        /// </summary>
+        /// <param name="input">The input string containing key presses</param>
+        /// <returns>The converted text</returns>
+        /// <exception cref="ArgumentException">Thrown when input is invalid or doesn't end with '#'</exception>
+        public static string OldPhonePad(string? input)
+        {
+            if (input == null)
+            {
+                return string.Empty;
+            }
+
+            return _keypad.ConvertToText(input);
         }
     }
 }
