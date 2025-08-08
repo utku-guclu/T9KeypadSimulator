@@ -1,6 +1,5 @@
 # Old Phone Keypad Simulator
-[C# Coding Challenge / IRON](./path/to/your/C#%20Coding%20Challenge.pdf)
-
+## C# Coding Challenge / IRON
 
 A C# implementation that simulates the text input method used on old mobile phones before smartphones existed. This simulator converts numeric keypress sequences into their corresponding letters, just like the old T9 (Text on 9 keys) system.
 

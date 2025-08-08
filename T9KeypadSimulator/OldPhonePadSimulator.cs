@@ -105,44 +105,65 @@ namespace T9KeypadSimulator
             }
             else
             {
-                ProcessCurrentKey();
-                _currentKey = key;
-                _keyPressCount = 1;
+                // If it's a different key than the current one
+                ProcessCurrentKey();  // Process the previous key sequence first
+                _currentKey = key;    // Set the new current key
+                _keyPressCount = 1;   // Reset press count for the new key
             }
         }
 
+        /// <summary>
+        /// Processes the current key sequence and appends the appropriate character to the result.
+        /// </summary>
         private void ProcessCurrentKey()
         {
+            // If there's no current key being processed, exit early
             if (!_currentKey.HasValue) return;
 
+            // Try to get the letters mapped to the current key
             if (KeyMappings.TryGetValue(_currentKey.Value, out var letters))
             {
+                // Calculate the index of the character to use (0-based)
+                // Using modulo to cycle through available letters if press count exceeds letter count
                 int index = (_keyPressCount - 1) % letters.Length;
+                // Append the selected character to the result
                 _result.Append(letters[index]);
             }
 
+            // Reset the current key state after processing
             _currentKey = null;
             _keyPressCount = 0;
         }
 
+        /// <summary>
+        /// Processes a backspace operation, removing the last character from the result.
+        /// </summary>
         private void ProcessBackspace()
         {
+            // If there's a current key being processed, reset it
             if (_currentKey.HasValue)
             {
                 _currentKey = null;
                 _keyPressCount = 0;
             }
+            // If there's no current key, remove the last character from the result
             else if (_result.Length > 0)
             {
                 _result.Length--;
             }
         }
 
+        /// <summary>
+        /// Checks if the provided character is a valid key (0-9 or #).
+        /// </summary>
         private static bool IsValidKey(char key)
         {
             return key == '0' || (key >= '2' && key <= '9');
         }
 
+        /// <summary>
+        /// Resets the state of the keypad, clearing the result and resetting key tracking.
+        /// </summary>
         private void ResetState()
         {
             _result.Clear();
